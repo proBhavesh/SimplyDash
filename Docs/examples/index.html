@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cloud Control AI Assistant</title>
+  <link href="/static/output.css" rel="stylesheet">
+  <style>
+    body {
+      background: white;
+    }
+    .header-logo {
+      font-size: 2rem;
+      font-weight: bold;
+      color: #333;
+    }
+    .header-logo:hover {
+      color: #000;
+    }
+    .content-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 2rem;
+    }
+    .content-container h1 {
+      font-size: 2.5rem;
+      font-weight: bold;
+      color: #333;
+    }
+    .content-container p {
+      font-size: 1.25rem;
+      color: #666;
+      max-width: 600px;
+      margin: 1rem 0;
+    }
+    .avatar-container {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      margin-top: 2rem;
+    }
+    .avatar-container img {
+      border-radius: 1rem;
+      width: 100%;
+      max-width: 500px;
+      height: auto;
+    }
+  </style>
+</head>
+<body class="antialiased">
+  <div class="flex flex-col min-h-screen">
+    <header class="px-4 lg:px-6 h-16 flex items-center bg-white shadow-sm">
+      <a href="#" class="header-logo">
+        Cloud Control
+      </a>
+      <nav class="ml-auto flex gap-4 sm:gap-6">
+        <a href="#features" class="text-sm font-medium hover:text-blue-500 transition-colors">Fonctionnalités</a>
+        <a href="#" class="text-sm font-medium hover:text-blue-500 transition-colors">Témoignages</a>
+        <a href="#contact" class="text-sm font-medium hover:text-blue-500 transition-colors">Contact</a>
+      </nav>
+    </header>
+    <main class="flex-1 flex items-center justify-center">
+      <section class="w-full py-12 sm:py-24 lg:py-32 flex items-center justify-center">
+        <div class="container px-4 md:px-6 flex flex-col lg:flex-row items-center justify-between gap-12">
+          <div class="content-container lg:w-1/2">
+            <h1>Faites de Votre Transformation Digitale un Succès!</h1>
+            <p>Un seul outil pour tout gérer dans votre entreprise</p>
+          </div>
+          <div class="avatar-container lg:w-1/2">
+            <img id="idleImage" src="/static/cloud.gif" alt="Écoute" style="display: block;" />
+            <img id="speakingImage" src="/static/cloudt.gif" alt="IA Parlante" style="display: none;" />
+            <img id="loadingImage" src="/static/cloud.gif" alt="Traitement" style="display: none;" />
+          </div>
+        </div>
+      </section>
+    </main>
+    <footer class="bg-white">
+      <div class="container mx-auto px-4 py-6">
+        <div class="flex flex-col sm:flex-row justify-between items-center">
+          <p class="text-sm text-gray-500">&copy; 2024 SimplyTalk.ai | Tous droits réservés.</p>
+          <nav class="flex gap-4 sm:gap-6 mt-4 sm:mt-0">
+            <a href="#" class="text-sm text-gray-500 hover:text-gray-700">Conditions d'utilisation</a>
+            <a href="#" class="text-sm text-gray-500 hover:text-gray-700">Confidentialité</a>
+          </nav>
+        </div>
+      </div>
+    </footer>
+  </div>
+
+  <script>
+    var vapiInstance = null;
+    const buttonConfig = {
+      position: "bottom-right",
+      offset: "10px",
+      width: "50px",
+      height: "50px",
+      idle: {
+        color: `rgb(93, 254, 202)`,
+        type: "pill",
+        title: "Besoin d'aide ?",
+        subtitle: "Discutez avec notre IA",
+        icon: `https://unpkg.com/lucide-static@0.321.0/icons/phone.svg`,
+      },
+      loading: {
+        color: `rgb(93, 124, 202)`,
+        type: "pill",
+        title: "Connexion...",
+        subtitle: "Veuillez patienter",
+        icon: `https://unpkg.com/lucide-static@0.321.0/icons/loader-2.svg`,
+      },
+      active: {
+        color: `rgb(255, 0, 0)`,
+        type: "pill",
+        title: "Appel en cours...",
+        subtitle: "Terminer l'appel.",
+        icon: `https://unpkg.com/lucide-static@0.321.0/icons/phone-off.svg`,
+      },
+    };
+
+    (function (d, t) {
+      var g = document.createElement(t),
+        s = d.getElementsByTagName(t)[0];
+      g.src =
+        "https://cdn.jsdelivr.net/gh/VapiAI/html-script-tag@latest/dist/assets/index.js";
+      g.defer = true;
+      g.async = true;
+      s.parentNode.insertBefore(g, s);
+
+      g.onload = function () {
+        console.log('Vapi SDK script loaded');
+        fetch('/assistant-config/cloud_control')
+          .then(response => response.json())
+          .then(data => {
+            console.log('Assistant config fetched successfully');
+            if (!window.vapiSDK) {
+              console.error('vapiSDK not found on window object');
+              return;
+            }
+            vapiInstance = window.vapiSDK.run({
+              apiKey: "{{ api_key }}",
+              assistant: "f03de106-ab15-4e07-81e2-ab21d3d5bdfa",
+              config: buttonConfig,
+            });
+            console.log('Vapi SDK initialized');
+
+            const idleImage = document.getElementById("idleImage");
+            const speakingImage = document.getElementById("speakingImage");
+            const loadingImage = document.getElementById("loadingImage");
+
+            vapiInstance.on('speech-start', () => {
+              idleImage.style.display = 'none';
+              speakingImage.style.display = 'block';
+              loadingImage.style.display = 'none';
+            });
+
+            vapiInstance.on('speech-end', () => {
+              idleImage.style.display = 'block';
+              speakingImage.style.display = 'none';
+              loadingImage.style.display = 'none';
+            });
+
+            vapiInstance.on('call-start', () => {
+              idleImage.style.display = 'block';
+              speakingImage.style.display = 'none';
+              loadingImage.style.display = 'none';
+            });
+
+            vapiInstance.on('call-end', () => {
+              idleImage.style.display = 'block';
+              speakingImage.style.display = 'none';
+              loadingImage.style.display = 'none';
+            });
+
+            vapiInstance.on('loading-start', () => {
+              idleImage.style.display = 'none';
+              speakingImage.style.display = 'none';
+              loadingImage.style.display = 'block';
+            });
+
+            vapiInstance.on('loading-end', () => {
+              idleImage.style.display = 'block';
+              speakingImage.style.display = 'none';
+              loadingImage.style.display = 'none';
+            });
+          })
+          .catch(error => {
+            console.error('Error fetching assistant config or initializing Vapi SDK:', error);
+          });
+      };
+
+      g.onerror = function() {
+        console.error('Failed to load Vapi SDK script');
+      };
+    })(document, "script");
+  </script>
+</body>
+</html>

@@ -1,0 +1,139 @@
+# Stage 1: Install dependencies (including dev dependencies)
+FROM node:20-alpine AS deps
+WORKDIR /app
+
+# Install build dependencies for canvas and sharp
+RUN apk add --no-cache \
+    build-base \
+    g++ \
+    cairo-dev \
+    jpeg-dev \
+    pango-dev \
+    giflib-dev \
+    python3 \
+    pkgconfig
+
+COPY package.json package-lock.json ./
+
+# Install dependencies with sharp specifically for alpine
+RUN npm ci
+RUN npm rebuild sharp
+
+# Stage 2: Build the application
+FROM node:20-alpine AS builder
+WORKDIR /app
+
+# Install build dependencies for canvas and sharp
+RUN apk add --no-cache \
+    build-base \
+    g++ \
+    cairo-dev \
+    jpeg-dev \
+    pango-dev \
+    giflib-dev \
+    python3 \
+    pkgconfig
+
+COPY . .
+COPY --from=deps /app/node_modules ./node_modules
+
+# Copy tsconfig.json
+COPY tsconfig.json ./
+
+# Build-time environment variables
+ARG NEXT_PUBLIC_FIREBASE_API_KEY
+ARG NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
+ARG NEXT_PUBLIC_FIREBASE_PROJECT_ID
+ARG NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
+ARG NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID
+ARG NEXT_PUBLIC_FIREBASE_APP_ID
+ARG NEXT_PUBLIC_VAPI_API_KEY
+ARG NEXT_PUBLIC_VAPI_BASE_URL
+ARG NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
+
+# Runtime environment variables
+ARG FIREBASE_PROJECT_ID
+ARG FIREBASE_CLIENT_EMAIL
+ARG FIREBASE_PRIVATE_KEY
+ARG FIREBASE_STORAGE_BUCKET
+
+# Set environment variables for the build process
+ENV NEXT_PUBLIC_FIREBASE_API_KEY="${NEXT_PUBLIC_FIREBASE_API_KEY}"
+ENV NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN="${NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN}"
+ENV NEXT_PUBLIC_FIREBASE_PROJECT_ID="${NEXT_PUBLIC_FIREBASE_PROJECT_ID}"
+ENV NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET="${NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET}"
+ENV NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID="${NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID}"
+ENV NEXT_PUBLIC_FIREBASE_APP_ID="${NEXT_PUBLIC_FIREBASE_APP_ID}"
+ENV NEXT_PUBLIC_VAPI_API_KEY="${NEXT_PUBLIC_VAPI_API_KEY}"
+ENV NEXT_PUBLIC_VAPI_BASE_URL="${NEXT_PUBLIC_VAPI_BASE_URL}"
+ENV NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY="${NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY}"
+
+ENV FIREBASE_PROJECT_ID="${FIREBASE_PROJECT_ID}"
+ENV FIREBASE_CLIENT_EMAIL="${FIREBASE_CLIENT_EMAIL}"
+ENV FIREBASE_PRIVATE_KEY="${FIREBASE_PRIVATE_KEY}"
+ENV FIREBASE_STORAGE_BUCKET="${FIREBASE_STORAGE_BUCKET}"
+
+# Rebuild sharp for alpine
+RUN npm rebuild sharp
+
+# Build Next.js application
+RUN npm run build
+
+# Compile server-side TypeScript code using npx
+RUN npx tsc
+
+# Stage 3: Production image, copy necessary files
+FROM node:20-alpine AS runner
+WORKDIR /app
+
+ENV NODE_ENV=production
+
+# Install runtime dependencies for canvas and sharp
+RUN apk add --no-cache \
+    cairo \
+    jpeg \
+    pango \
+    giflib \
+    python3
+
+# Copy necessary files
+COPY --from=builder /app/next.config.js ./
+COPY --from=builder /app/public ./public
+COPY --from=builder /app/.next ./.next
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/package.json ./package.json
+COPY --from=builder /app/dist/ ./dist/
+COPY --from=builder /app/server/ ./server/
+
+# Set environment variables for runtime
+ARG NEXT_PUBLIC_FIREBASE_API_KEY
+ARG NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
+ARG NEXT_PUBLIC_FIREBASE_PROJECT_ID
+ARG NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
+ARG NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID
+ARG NEXT_PUBLIC_FIREBASE_APP_ID
+ARG NEXT_PUBLIC_VAPI_API_KEY
+ARG NEXT_PUBLIC_VAPI_BASE_URL
+ARG NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
+ARG FIREBASE_PROJECT_ID
+ARG FIREBASE_CLIENT_EMAIL
+ARG FIREBASE_PRIVATE_KEY
+ARG FIREBASE_STORAGE_BUCKET
+
+ENV NEXT_PUBLIC_FIREBASE_API_KEY="${NEXT_PUBLIC_FIREBASE_API_KEY}"
+ENV NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN="${NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN}"
+ENV NEXT_PUBLIC_FIREBASE_PROJECT_ID="${NEXT_PUBLIC_FIREBASE_PROJECT_ID}"
+ENV NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET="${NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET}"
+ENV NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID="${NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID}"
+ENV NEXT_PUBLIC_FIREBASE_APP_ID="${NEXT_PUBLIC_FIREBASE_APP_ID}"
+ENV NEXT_PUBLIC_VAPI_API_KEY="${NEXT_PUBLIC_VAPI_API_KEY}"
+ENV NEXT_PUBLIC_VAPI_BASE_URL="${NEXT_PUBLIC_VAPI_BASE_URL}"
+ENV NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY="${NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY}"
+
+ENV FIREBASE_PROJECT_ID="${FIREBASE_PROJECT_ID}"
+ENV FIREBASE_CLIENT_EMAIL="${FIREBASE_CLIENT_EMAIL}"
+ENV FIREBASE_PRIVATE_KEY="${FIREBASE_PRIVATE_KEY}"
+ENV FIREBASE_STORAGE_BUCKET="${FIREBASE_STORAGE_BUCKET}"
+
+# Start the application using compiled JavaScript
+CMD ["node", "dist/server.js"]
